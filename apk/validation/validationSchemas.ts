@@ -47,3 +47,35 @@ export const registerSchema = z.object({
       }
     }),
 });
+
+// Update Profile Schema
+export const updateProfileSchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  email: z.string().min(1, "Email is required").email("Invalid email"),
+  avatar: z.string().optional(),
+});
+
+// Update Password Schema
+export const updatePasswordSchema = z.object({
+  currentPassword: z.string().min(8, "Current password must be at least 8 characters"),
+  newPassword: z.string()
+    .min(8, "New password must be at least 8 characters")
+    .superRefine((password, ctx) => {
+      const result = validateStrongPassword(password);
+      if (result !== true) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: result as string,
+        });
+      }
+    }),
+}).superRefine((data, ctx) => {
+  // Ensure current password and new password are different
+  if (data.currentPassword === data.newPassword) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "New password must be different from current password",
+      path: ["newPassword"],
+    });
+  }
+});

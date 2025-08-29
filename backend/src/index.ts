@@ -6,6 +6,8 @@ import { ENV } from "./config/ENV.ts";
 import connectDB from "./config/db.ts";
 
 import authRoutes from "./routes/auth.route.ts";
+import userRoutes from "./routes/user.route.ts";
+import categoryRoutes from "./routes/category.route.ts";
 
 const app = express();
 const PORT = ENV.PORT;
@@ -20,6 +22,8 @@ app.use("/uploads", express.static("uploads"));
 
 // routes
 app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/category", categoryRoutes);
 
 // test route
 app.get("/", (req, res) => {

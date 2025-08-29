@@ -5,6 +5,7 @@ import { ENV } from "../config/ENV.ts";
 
 export interface AuthenticatedRequest extends express.Request {
   user?: { userId: string };
+  file?: Express.Multer.File | undefined;
 }
 
 export const authMiddleware = (
@@ -18,13 +19,13 @@ export const authMiddleware = (
       return res.status(401).send("Missed token from cookies Unauthorized");
     }
 
-    const decode = jwt.verify(token, ENV.JWT_SECRET as string) as { user: { userId: string } };
+    const decode = jwt.verify(token, ENV.JWT_SECRET as string) as { userId: string };
 
-    if (!decode || !decode.user || !decode.user.userId) {
+    if (!decode || !decode.userId) {
       return res.status(401).send("Error happen Unauthorized");
     }
 
-    req.user = { userId: decode.user.userId };
+    req.user = { userId: decode.userId };
 
     next();
   } catch (err) {

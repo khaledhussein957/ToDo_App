@@ -75,7 +75,7 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Image
-          source={require("../../assets/images/react-logo.png")}
+          source={require("../../assets/images/register.png")}
           style={styles.image}
           resizeMode="contain"
         />

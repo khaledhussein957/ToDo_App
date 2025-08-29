@@ -74,7 +74,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Image
-          source={require("../../assets/images/react-logo.png")}
+          source={require("../../assets/images/login.png")}
           style={styles.image}
           resizeMode="contain"
         />

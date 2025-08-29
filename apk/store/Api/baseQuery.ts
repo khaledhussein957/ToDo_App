@@ -9,7 +9,6 @@ let storedUser: any = null;
 const getToken = async () => {
   const token = await AsyncStorage.getItem("token");
   storedToken = token || null;
-  console.log("Token fetched:", storedToken);
   return storedToken;
 };
 
@@ -21,32 +20,28 @@ const getTokenSync = () => {
 const setToken = async (token: string) => {
   storedToken = token;
   await AsyncStorage.setItem("token", token);
-  console.log("Token saved:", token);
 };
 
 const removeToken = async () => {
   storedToken = null;
   await AsyncStorage.removeItem("token");
-  console.log("Token removed");
-};
+  };
 
 const getUser = async () => {
   const user = await AsyncStorage.getItem("user");
   storedUser = user ? JSON.parse(user) : null;
-  console.log("User fetched:", storedUser);
   return storedUser;
 };
 
 const setUser = async (user: any) => {
   storedUser = user;
   await AsyncStorage.setItem("user", JSON.stringify(user));
-  console.log("User saved:", user);
 };
 
 const removeUser = async () => {
   storedUser = null;
   await AsyncStorage.removeItem("user");
-  console.log("User data cleared");
+  
 };
 
 export const baseQuery = fetchBaseQuery({
@@ -63,7 +58,6 @@ export const baseQuery = fetchBaseQuery({
       // Handle 401 synchronously - just clear memory
       storedToken = null;
       storedUser = null;
-      console.log("Unauthorized - clearing stored data");
     }
 
     if (!response.ok) {
@@ -82,12 +76,10 @@ const initializeStoredData = async () => {
     
     if (token) {
       storedToken = token;
-      console.log("Token loaded from storage:", token);
     }
     
     if (user) {
       storedUser = JSON.parse(user);
-      console.log("User loaded from storage:", storedUser);
     }
   } catch (error) {
     console.error("Error loading stored data:", error);
