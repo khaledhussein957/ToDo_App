@@ -8,6 +8,8 @@ import connectDB from "./config/db.ts";
 import authRoutes from "./routes/auth.route.ts";
 import userRoutes from "./routes/user.route.ts";
 import categoryRoutes from "./routes/category.route.ts";
+import taskRoutes from "./routes/task.route.ts";
+import analyticsRoutes from "./routes/analytics.route.ts";
 
 const app = express();
 const PORT = ENV.PORT;
@@ -24,6 +26,8 @@ app.use("/uploads", express.static("uploads"));
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/category", categoryRoutes);
+app.use("/api/task", taskRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // test route
 app.get("/", (req, res) => {

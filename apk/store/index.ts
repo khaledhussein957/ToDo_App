@@ -4,6 +4,8 @@ import todoReducer from "./slices/todoSlice";
 import { authApi } from "./Api/authApi";
 import { categoryApi } from "./Api/categoryApi";
 import { userApi } from "./Api/userApi";
+import { taskApi } from "./Api/taskApi";
+import { analyticsApi } from "./Api/analyticsApi";
 
 export const store = configureStore({
   reducer: {
@@ -12,12 +14,16 @@ export const store = configureStore({
     [authApi.reducerPath]: authApi.reducer,
     [categoryApi.reducerPath]: categoryApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
+    [taskApi.reducerPath]: taskApi.reducer,
+    [analyticsApi.reducerPath]: analyticsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
       authApi.middleware,
       categoryApi.middleware,
-      userApi.middleware
+      userApi.middleware,
+      taskApi.middleware,
+      analyticsApi.middleware
     ),
 });
 

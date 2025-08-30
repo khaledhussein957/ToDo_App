@@ -12,8 +12,7 @@ export interface ITask extends Document {
     priority: string;
     tags: string[];
     recurrence: string;
-    attachments: string[];
-    sharedWith: mongoose.Schema.Types.ObjectId[];
+    document: string;
 }
 
 const TodoSchema = new mongoose.Schema<ITask>({
@@ -21,14 +20,12 @@ const TodoSchema = new mongoose.Schema<ITask>({
   description: { type: String },
   completed: { type: Boolean, default: false },
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  categoryId: { type: Schema.Types.ObjectId, ref: "Category" }, // new field
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
+  categoryId: { type: Schema.Types.ObjectId, ref: "Category" },
   dueDate: { type: Date },
   priority: {
     type: String,
-    enum: ["High", "Medium", "Low"],
-    default: "Medium",
+    enum: ["high", "medium", "low"],
+    default: "medium",
   },
   tags: [{ type: String }],
   recurrence: {
@@ -36,8 +33,10 @@ const TodoSchema = new mongoose.Schema<ITask>({
     enum: ["Daily", "Weekly", "Monthly", null],
     default: null,
   },
-  attachments: [{ type: String }],
-  sharedWith: [{ type: Schema.Types.ObjectId, ref: "User" }],
+  document: {
+    type: String,
+    default: "",
+},
 },{
     timestamps: true,
 });
