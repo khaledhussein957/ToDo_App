@@ -434,24 +434,6 @@ export default function ProfileTab() {
             <Text style={profileStyles.infoLabel}>Joined</Text>
             <Text style={profileStyles.infoValue}>{getJoinedDate()}</Text>
           </View>
-          
-          {getUserCategories().length > 0 && (
-            <View style={profileStyles.infoItem}>
-              <Text style={profileStyles.infoLabel}>Categories</Text>
-              <View style={profileStyles.categoriesContainer}>
-                {getUserCategories().map((category, index) => (
-                  <View key={category._id} style={profileStyles.categoryTag}>
-                    <Text style={profileStyles.categoryTagText}>{category.name}</Text>
-                  </View>
-                ))}
-                {categoriesData?.categories && categoriesData.categories.length > 3 && (
-                  <Text style={profileStyles.moreCategoriesText}>
-                    +{(categoriesData?.categories?.length || 0) - 3} more
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
         </View>
 
         {/* Settings Section */}

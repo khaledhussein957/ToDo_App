@@ -148,7 +148,12 @@ export default function TodosTab() {
     };
 
     // Close dropdowns when any modal opens
-    if (showAddModal || showTaskModal || showCategoriesModal || showDatePicker) {
+    if (
+      showAddModal ||
+      showTaskModal ||
+      showCategoriesModal ||
+      showDatePicker
+    ) {
       closeDropdowns();
     }
   }, [showAddModal, showTaskModal, showCategoriesModal, showDatePicker]);
@@ -162,8 +167,15 @@ export default function TodosTab() {
           task.description
             .toLowerCase()
             .includes(filters.search.toLowerCase()));
+      
+      // Fix category filtering - check both categoryId._id and categoryId
       const matchesCategory =
-        !filters.category || task.category === filters.category;
+        !filters.category || 
+        (task.categoryId && 
+          (typeof task.categoryId === 'string' 
+            ? task.categoryId === filters.category
+            : task.categoryId._id === filters.category));
+      
       const matchesStatus =
         !filters.status ||
         (filters.status === "completed" && task.completed) ||
@@ -415,9 +427,13 @@ export default function TodosTab() {
           </Text>
         )}
         <View style={styles.taskMeta}>
-          {item.category && (
+          {(item.category || (item.categoryId && typeof item.categoryId === 'object' && item.categoryId.name)) && (
             <View style={styles.categoryTag}>
-              <Text style={styles.categoryText}>{item.category}</Text>
+              <Text style={styles.categoryText}>
+                {typeof item.categoryId === 'object' && item.categoryId.name 
+                  ? item.categoryId.name 
+                  : item.category}
+              </Text>
             </View>
           )}
           {item.dueDate && (
@@ -473,8 +489,11 @@ export default function TodosTab() {
     isOpen: boolean,
     setIsOpen: (open: boolean) => void
   ) => {
-    const selectedOption = options.find(option => option.value === value) || { label: "All", value: "" };
-    
+    const selectedOption = options.find((option) => option.value === value) || {
+      label: "All",
+      value: "",
+    };
+
     return (
       <View style={styles.filterDropdown}>
         <Text style={styles.filterLabel}>{title}</Text>
@@ -482,49 +501,58 @@ export default function TodosTab() {
           style={styles.dropdownButton}
           onPress={() => setIsOpen(!isOpen)}
         >
-          <Text style={styles.dropdownButtonText}>
-            {selectedOption.label}
-          </Text>
+          <Text style={styles.dropdownButtonText}>{selectedOption.label}</Text>
           <Ionicons
             name={isOpen ? "chevron-up" : "chevron-down"}
             size={16}
             color="#6B7280"
           />
         </TouchableOpacity>
-        
+
         {isOpen && (
           <View style={styles.dropdownMenu}>
             <TouchableOpacity
               style={[
                 styles.dropdownItem,
-                value === "" && styles.dropdownItemActive
+                value === "" && styles.dropdownItemActive,
               ]}
               onPress={() => {
                 onSelect("");
                 setIsOpen(false);
               }}
             >
-              <Text style={[
-                styles.dropdownItemText,
-                value === "" && { color: "#8B593E", fontWeight: "600" }
-              ]}>All</Text>
+              <Text
+                style={[
+                  styles.dropdownItemText,
+                  value === "" && { color: "#8B593E", fontWeight: "600" },
+                ]}
+              >
+                All
+              </Text>
             </TouchableOpacity>
             {options.map((option) => (
               <TouchableOpacity
                 key={option.value}
                 style={[
                   styles.dropdownItem,
-                  value === option.value && styles.dropdownItemActive
+                  value === option.value && styles.dropdownItemActive,
                 ]}
                 onPress={() => {
                   onSelect(option.value);
                   setIsOpen(false);
                 }}
               >
-                <Text style={[
-                  styles.dropdownItemText,
-                  value === option.value && { color: "#8B593E", fontWeight: "600" }
-                ]}>{option.label}</Text>
+                <Text
+                  style={[
+                    styles.dropdownItemText,
+                    value === option.value && {
+                      color: "#8B593E",
+                      fontWeight: "600",
+                    },
+                  ]}
+                >
+                  {option.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -539,24 +567,6 @@ export default function TodosTab() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>My Tasks</Text>
-          <View style={styles.headerButtons}>
-            <TouchableOpacity
-              style={styles.manageCategoriesButton}
-              onPress={() => setShowCategoriesModal(true)}
-            >
-              <Ionicons name="folder-open" size={20} color="#8B593E" />
-              <Text style={styles.manageCategoriesButtonText}>
-                Manage Categories
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => setShowAddModal(true)}
-            >
-              <Ionicons name="add" size={24} color="#FFFFFF" />
-              <Text style={styles.addButtonText}>New Task</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* Search Bar */}
@@ -996,8 +1006,6 @@ export default function TodosTab() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-
-
               {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Task Details</Text>
@@ -1006,7 +1014,7 @@ export default function TodosTab() {
                 </TouchableOpacity>
               </View>
 
-                            {/* Modal Body */}
+              {/* Modal Body */}
               {selectedTask && (
                 <ScrollView
                   style={styles.taskDetailScroll}
@@ -1020,7 +1028,11 @@ export default function TodosTab() {
                     </Text>
                     {selectedTask.completed && (
                       <View style={styles.completedBadge}>
-                        <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={16}
+                          color="#10B981"
+                        />
                         <Text style={styles.completedBadgeText}>Completed</Text>
                       </View>
                     )}
@@ -1036,8 +1048,8 @@ export default function TodosTab() {
                   {/* Task Meta */}
                   <View style={styles.taskDetailMeta}>
                     <Text style={styles.sectionLabel}>Details</Text>
-                    
-                    {selectedTask.category && (
+
+                    {(selectedTask.category || (selectedTask.categoryId && typeof selectedTask.categoryId === 'object' && selectedTask.categoryId.name)) && (
                       <View style={styles.detailTag}>
                         <Ionicons
                           name="folder-outline"
@@ -1045,7 +1057,9 @@ export default function TodosTab() {
                           color="#8B593E"
                         />
                         <Text style={styles.detailTagText}>
-                          {selectedTask.category}
+                          {typeof selectedTask.categoryId === 'object' && selectedTask.categoryId.name 
+                            ? selectedTask.categoryId.name 
+                            : selectedTask.category}
                         </Text>
                       </View>
                     )}
@@ -1058,7 +1072,8 @@ export default function TodosTab() {
                           color="#8B593E"
                         />
                         <Text style={styles.detailTagText}>
-                          Due: {new Date(selectedTask.dueDate).toLocaleDateString()}
+                          Due:{" "}
+                          {new Date(selectedTask.dueDate).toLocaleDateString()}
                         </Text>
                       </View>
                     )}
@@ -1074,9 +1089,17 @@ export default function TodosTab() {
                             : styles.priorityLow,
                         ]}
                       >
-                        <Ionicons name="flag-outline" size={16} color="#FFFFFF" />
-                        <Text style={[styles.detailTagText, { color: "#FFFFFF" }]}>
-                          {selectedTask.priority.charAt(0).toUpperCase() + selectedTask.priority.slice(1)} Priority
+                        <Ionicons
+                          name="flag-outline"
+                          size={16}
+                          color="#FFFFFF"
+                        />
+                        <Text
+                          style={[styles.detailTagText, { color: "#FFFFFF" }]}
+                        >
+                          {selectedTask.priority.charAt(0).toUpperCase() +
+                            selectedTask.priority.slice(1)}{" "}
+                          Priority
                         </Text>
                       </View>
                     )}
@@ -1099,7 +1122,7 @@ export default function TodosTab() {
                   {(() => {
                     let tagsArray: string[] = [];
                     if (selectedTask.tags) {
-                      if (typeof selectedTask.tags === 'string') {
+                      if (typeof selectedTask.tags === "string") {
                         try {
                           tagsArray = JSON.parse(selectedTask.tags);
                         } catch (e) {
@@ -1109,7 +1132,7 @@ export default function TodosTab() {
                         tagsArray = selectedTask.tags;
                       }
                     }
-                    
+
                     return tagsArray.length > 0 ? (
                       <View style={styles.taskDetailMeta}>
                         <Text style={styles.sectionLabel}>Tags</Text>
@@ -1129,16 +1152,30 @@ export default function TodosTab() {
                     <Text style={styles.sectionLabel}>Timeline</Text>
                     <View style={styles.timestampContainer}>
                       <View style={styles.timestampItem}>
-                        <Ionicons name="time-outline" size={14} color="#6B7280" />
+                        <Ionicons
+                          name="time-outline"
+                          size={14}
+                          color="#6B7280"
+                        />
                         <Text style={styles.timestampText}>
-                          Created: {new Date(selectedTask.createdAt).toLocaleDateString()}
+                          Created:{" "}
+                          {new Date(
+                            selectedTask.createdAt
+                          ).toLocaleDateString()}
                         </Text>
                       </View>
                       {selectedTask.updatedAt !== selectedTask.createdAt && (
                         <View style={styles.timestampItem}>
-                          <Ionicons name="refresh-outline" size={14} color="#6B7280" />
+                          <Ionicons
+                            name="refresh-outline"
+                            size={14}
+                            color="#6B7280"
+                          />
                           <Text style={styles.timestampText}>
-                            Updated: {new Date(selectedTask.updatedAt).toLocaleDateString()}
+                            Updated:{" "}
+                            {new Date(
+                              selectedTask.updatedAt
+                            ).toLocaleDateString()}
                           </Text>
                         </View>
                       )}
@@ -1146,47 +1183,55 @@ export default function TodosTab() {
                   </View>
 
                   {/* Attachments Section */}
-                  {(selectedTask.document || (selectedTask.attachments && selectedTask.attachments.length > 0)) && (
+                  {(selectedTask.document ||
+                    (selectedTask.attachments &&
+                      selectedTask.attachments.length > 0)) && (
                     <View style={styles.taskDetailMeta}>
                       <Text style={styles.sectionLabel}>Attachments</Text>
-                      
+
                       {selectedTask.document && (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.attachmentItem}
                           onPress={() => {
                             if (selectedTask.document) {
-                              Linking.openURL(selectedTask.document).catch((err) => {
-                                Alert.alert("Error", "Could not open document");
-                              });
+                              Linking.openURL(selectedTask.document).catch(
+                                (err) => {
+                                  Alert.alert(
+                                    "Error",
+                                    "Could not open document"
+                                  );
+                                }
+                              );
                             }
                           }}
                         >
-                          <Ionicons
-                            name="document"
-                            size={16}
-                            color="#8B593E"
-                          />
+                          <Ionicons name="document" size={16} color="#8B593E" />
                           <Text style={styles.attachmentText}>
-                            {selectedTask.document.split("/").pop() || "View Document"}
+                            {selectedTask.document.split("/").pop() ||
+                              "View Document"}
                           </Text>
                           <Ionicons
                             name="open-outline"
                             size={14}
                             color="#8B593E"
-                            style={{ marginLeft: 'auto' }}
+                            style={{ marginLeft: "auto" }}
                           />
                         </TouchableOpacity>
                       )}
 
-                      {selectedTask.attachments && selectedTask.attachments.length > 0 && (
+                      {selectedTask.attachments &&
+                        selectedTask.attachments.length > 0 &&
                         selectedTask.attachments.map((attachment, index) => (
-                          <TouchableOpacity 
-                            key={index} 
+                          <TouchableOpacity
+                            key={index}
                             style={styles.attachmentItem}
                             onPress={() => {
                               if (attachment) {
                                 Linking.openURL(attachment).catch((err) => {
-                                  Alert.alert("Error", "Could not open attachment");
+                                  Alert.alert(
+                                    "Error",
+                                    "Could not open attachment"
+                                  );
                                 });
                               }
                             }}
@@ -1203,11 +1248,10 @@ export default function TodosTab() {
                               name="open-outline"
                               size={14}
                               color="#8B593E"
-                              style={{ marginLeft: 'auto' }}
+                              style={{ marginLeft: "auto" }}
                             />
                           </TouchableOpacity>
-                        ))
-                      )}
+                        ))}
                     </View>
                   )}
                 </ScrollView>
@@ -1479,6 +1523,25 @@ export default function TodosTab() {
             </View>
           </View>
         </Modal>
+
+        {/* Floating Action Buttons */}
+        <View style={styles.floatingButtonsContainer}>
+          {/* Manage Categories FAB */}
+          <TouchableOpacity
+            style={styles.floatingButtonSecondary}
+            onPress={() => setShowCategoriesModal(true)}
+          >
+            <Ionicons name="folder-open" size={24} color="#8B593E" />
+          </TouchableOpacity>
+
+          {/* Add Task FAB */}
+          <TouchableOpacity
+            style={styles.floatingButtonPrimary}
+            onPress={() => setShowAddModal(true)}
+          >
+            <Ionicons name="add" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeScreen>
   );
@@ -1501,20 +1564,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     color: "#111827",
-  },
-  addButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#8B593E",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 4,
   },
   searchContainer: {
     flexDirection: "row",
@@ -1863,7 +1912,7 @@ const styles = StyleSheet.create({
   taskDetailScroll: {
     flex: 1,
     minHeight: 200,
-  },  
+  },
   taskDetailScrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -2141,26 +2190,40 @@ const styles = StyleSheet.create({
     color: "#374151",
     marginBottom: 8,
   },
-  headerButtons: {
-    flexDirection: "row",
-    alignItems: "center",
+  floatingButtonsContainer: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    alignItems: "flex-end",
     gap: 12,
   },
-  manageCategoriesButton: {
-    flexDirection: "row",
+  floatingButtonPrimary: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#8B593E",
+    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  floatingButtonSecondary: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
     borderWidth: 1,
     borderColor: "#E5E7EB",
-  },
-  manageCategoriesButtonText: {
-    color: "#8B593E",
-    fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 4,
   },
   addCategorySection: {
     marginBottom: 24,

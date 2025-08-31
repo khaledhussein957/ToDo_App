@@ -10,6 +10,7 @@ import userRoutes from "./routes/user.route.ts";
 import categoryRoutes from "./routes/category.route.ts";
 import taskRoutes from "./routes/task.route.ts";
 import analyticsRoutes from "./routes/analytics.route.ts";
+import notificationRoutes from "./routes/notification.route.ts";
 
 const app = express();
 const PORT = ENV.PORT;
@@ -28,6 +29,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/task", taskRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // test route
 app.get("/", (req, res) => {

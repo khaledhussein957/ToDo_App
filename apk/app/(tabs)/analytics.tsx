@@ -361,18 +361,6 @@ export default function AnalyticsTab() {
     }
   };
 
-  // Loading state
-  if (isLoadingDashboard) {
-    return (
-      <SafeScreen>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B593E" />
-          <Text style={styles.loadingText}>Loading analytics...</Text>
-        </View>
-      </SafeScreen>
-    );
-  }
-
   return (
     <SafeScreen>
       <ScrollView

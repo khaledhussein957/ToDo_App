@@ -1,7 +1,13 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { View, Text, StyleSheet } from "react-native";
+import { useGetNotificationStatsQuery } from "../../store/Api/notificationApi";
 
 export default function TabsLayout() {
+  const { data: notificationStats } = useGetNotificationStatsQuery();
+  
+  // Get pending notification count (not sent yet)
+  const pendingCount = notificationStats?.pending || 0;
 
   return (
     <Tabs
@@ -53,6 +59,25 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="notifications"
+        options={{
+          title: "Notifications",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <View style={styles.iconContainer}>
+              <Ionicons name="notifications-outline" size={size} color={color} />
+              {pendingCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {pendingCount > 99 ? '99+' : pendingCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
@@ -65,3 +90,29 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+});

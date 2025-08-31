@@ -9,7 +9,8 @@ import {
   Modal,
   TextInput,
   FlatList,
-  Image
+  Image,
+  ActivityIndicator
 } from "react-native";
 import { router } from "expo-router";
 import { useSelector, useDispatch } from "react-redux";
@@ -18,33 +19,25 @@ import { logout } from "../../store/slices/authSlice";
 import { tokenUtils } from "../../store/Api/baseQuery";
 import { RootState } from "../../store";
 import { useGetAllCategoriesQuery } from "../../store/Api/categoryApi";
+import { useGetTasksQuery, useCreateTaskMutation, Task } from "../../store/Api/taskApi";
+import { useGetNotificationStatsQuery, useGenerateTaskNotificationsMutation } from "../../store/Api/notificationApi";
 import SafeScreen from "../../components/SafeArea";
-
-interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-  dueDate: string;
-  category: string;
-}
 
 export default function HomeTab() {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
   const { data: categoriesData } = useGetAllCategoriesQuery();
+  const { data: tasksData, isLoading: isLoadingTasks, refetch: refetchTasks } = useGetTasksQuery();
+  const { data: notificationStats, isLoading: isLoadingStats } = useGetNotificationStatsQuery();
+  const [createTask, { isLoading: isCreatingTask }] = useCreateTaskMutation();
+  const [generateTaskNotifications] = useGenerateTaskNotificationsMutation();
   
   const [userFromStorage, setUserFromStorage] = useState<any>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDescription, setNewTaskDescription] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-
-  // Mock data - replace with real data from your todo API
-  const todayTasks: Task[] = [
-    { id: "1", title: "Complete project presentation", completed: false, dueDate: "2024-01-15", category: "Work" },
-    { id: "2", title: "Buy groceries", completed: true, dueDate: "2024-01-15", category: "Personal" },
-    { id: "3", title: "Call dentist", completed: false, dueDate: "2024-01-15", category: "Health" },
-    { id: "4", title: "Review code changes", completed: false, dueDate: "2024-01-15", category: "Work" },
-  ];
+  const [selectedPriority, setSelectedPriority] = useState("medium");
 
   // Load user data from storage on component mount
   useEffect(() => {
@@ -65,12 +58,59 @@ export default function HomeTab() {
   // Use user from storage if available, then Redux state
   const currentUser = userFromStorage || user;
 
-  const stats = {
-    completedToday: 8,
-    pendingTasks: 12,
-    overdueTasks: 3,
-    totalCategories: categoriesData?.categories?.length || 0,
+  // Get today's tasks
+  const getTodayTasks = () => {
+    if (!tasksData?.tasks) return [];
+    
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+    
+    return tasksData.tasks.filter((task: Task) => {
+      if (!task.dueDate) return false;
+      const taskDate = new Date(task.dueDate).toISOString().split('T')[0];
+      return taskDate === todayString;
+    }).slice(0, 4); // Show only first 4 tasks
   };
+
+  const todayTasks = getTodayTasks();
+
+  // Calculate stats
+  const calculateStats = () => {
+    if (!tasksData?.tasks) {
+      return {
+        completedToday: 0,
+        pendingTasks: 0,
+        overdueTasks: 0,
+        totalCategories: categoriesData?.categories?.length || 0,
+      };
+    }
+
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+    const now = new Date();
+
+    const completedToday = tasksData.tasks.filter((task: Task) => {
+      if (!task.dueDate) return false;
+      const taskDate = new Date(task.dueDate).toISOString().split('T')[0];
+      return taskDate === todayString && task.completed;
+    }).length;
+
+    const pendingTasks = tasksData.tasks.filter((task: Task) => !task.completed).length;
+
+    const overdueTasks = tasksData.tasks.filter((task: Task) => {
+      if (!task.dueDate || task.completed) return false;
+      return new Date(task.dueDate) < now;
+    }).length;
+
+    return {
+      completedToday,
+      pendingTasks,
+      overdueTasks,
+      totalCategories: categoriesData?.categories?.length || 0,
+    };
+  };
+
+  const stats = calculateStats();
 
   const getCurrentDate = () => {
     const today = new Date();
@@ -110,39 +150,80 @@ export default function HomeTab() {
     );
   };
 
-  const handleAddTask = () => {
+  const handleAddTask = async () => {
     if (!newTaskTitle.trim()) {
       Alert.alert("Error", "Please enter a task title");
       return;
     }
     
-    // TODO: Add task to your todo API
-    console.log("Adding task:", { title: newTaskTitle, category: selectedCategory });
-    
-    setNewTaskTitle("");
-    setSelectedCategory("");
-    setShowAddModal(false);
-    Alert.alert("Success", "Task added successfully!");
+    try {
+      const taskData = {
+        title: newTaskTitle.trim(),
+        description: newTaskDescription.trim(),
+        priority: selectedPriority as "low" | "medium" | "high",
+        ...(selectedCategory && { categoryId: selectedCategory }),
+      };
+
+      await createTask(taskData).unwrap();
+      
+      setNewTaskTitle("");
+      setNewTaskDescription("");
+      setSelectedCategory("");
+      setSelectedPriority("medium");
+      setShowAddModal(false);
+      
+      Alert.alert("Success", "Task added successfully!");
+    } catch (error) {
+      Alert.alert("Error", "Failed to add task. Please try again.");
+    }
+  };
+
+  const handleGenerateNotifications = async () => {
+    try {
+      const result = await generateTaskNotifications().unwrap();
+      Alert.alert("Success", result.message);
+    } catch (error) {
+      Alert.alert("Error", "Failed to generate notifications");
+    }
   };
 
   const renderTaskItem = ({ item }: { item: Task }) => (
-    <View style={[styles.taskItem, item.completed && styles.completedTask]}>
-      <TouchableOpacity style={styles.taskCheckbox}>
+    <TouchableOpacity 
+      style={[styles.taskItem, item.completed && styles.completedTask]}
+      onPress={() => router.push(`/(tabs)/todos`)}
+    >
+      <View style={styles.taskCheckbox}>
         <Ionicons 
           name={item.completed ? "checkmark-circle" : "ellipse-outline"} 
           size={20} 
           color={item.completed ? "#10B981" : "#6B7280"} 
         />
-      </TouchableOpacity>
+      </View>
       <View style={styles.taskContent}>
         <Text style={[styles.taskTitle, item.completed && styles.completedTaskText]}>
           {item.title}
         </Text>
-        <Text style={styles.taskCategory}>{item.category}</Text>
+        <View style={styles.taskMeta}>
+          {item.categoryId && typeof item.categoryId === 'object' && (
+            <Text style={styles.taskCategory}>{item.categoryId.name}</Text>
+          )}
+          <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priority || 'medium') }]}>
+            <Text style={styles.priorityText}>{item.priority || 'medium'}</Text>
+          </View>
+        </View>
       </View>
       <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-    </View>
+    </TouchableOpacity>
   );
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return '#EF4444';
+      case 'medium': return '#F59E0B';
+      case 'low': return '#10B981';
+      default: return '#6B7280';
+    }
+  };
 
   const renderStatCard = (title: string, value: number, icon: string, color: string) => (
     <View style={[styles.statCard, { borderLeftColor: color }]}>
@@ -179,6 +260,27 @@ export default function HomeTab() {
             </View>
           </View>
 
+          {/* Quick Actions */}
+          <View style={styles.quickActionsContainer}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.quickActionsGrid}>
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={handleGenerateNotifications}
+              >
+                <Ionicons name="notifications" size={24} color="#8B593E" />
+                <Text style={styles.quickActionText}>Generate Notifications</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => router.push("/(tabs)/analytics")}
+              >
+                <Ionicons name="analytics" size={24} color="#8B593E" />
+                <Text style={styles.quickActionText}>View Analytics</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Today's Tasks */}
           <View style={styles.tasksSection}>
             <View style={styles.sectionHeader}>
@@ -188,90 +290,23 @@ export default function HomeTab() {
               </TouchableOpacity>
             </View>
             
-            <FlatList
-              data={todayTasks.slice(0, 4)}
-              renderItem={renderTaskItem}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              style={styles.tasksList}
-            />
+            {todayTasks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="checkmark-circle" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyText}>No tasks for today</Text>
+                <Text style={styles.emptySubtext}>Great job! All caught up.</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={todayTasks}
+                renderItem={renderTaskItem}
+                keyExtractor={(item) => item._id}
+                scrollEnabled={false}
+                style={styles.tasksList}
+              />
+            )}
           </View>
         </ScrollView>
-
-        {/* Floating Add Button */}
-        <TouchableOpacity 
-          style={styles.floatingButton}
-          onPress={() => setShowAddModal(true)}
-        >
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-
-        {/* Add Task Modal */}
-        <Modal
-          visible={showAddModal}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShowAddModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Add New Task</Text>
-                <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                  <Ionicons name="close" size={24} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-
-              <TextInput
-                style={styles.input}
-                placeholder="Enter task title..."
-                value={newTaskTitle}
-                onChangeText={setNewTaskTitle}
-                autoFocus
-              />
-
-              {categoriesData?.categories && categoriesData.categories.length > 0 && (
-                <View style={styles.categorySection}>
-                  <Text style={styles.categoryLabel}>Select Category (Optional)</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryList}>
-                    {categoriesData.categories.map((category) => (
-                      <TouchableOpacity
-                        key={category._id}
-                        style={[
-                          styles.categoryChip,
-                          selectedCategory === category._id && styles.selectedCategoryChip
-                        ]}
-                        onPress={() => setSelectedCategory(category._id)}
-                      >
-                        <Text style={[
-                          styles.categoryChipText,
-                          selectedCategory === category._id && styles.selectedCategoryChipText
-                        ]}>
-                          {category.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity 
-                  style={styles.cancelButton}
-                  onPress={() => setShowAddModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.addButton}
-                  onPress={handleAddTask}
-                >
-                  <Text style={styles.addButtonText}>Add Task</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
       </View>
     </SafeScreen>
   );
@@ -281,6 +316,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F3F4F6",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#6B7280",
   },
   header: {
     flexDirection: "row",
@@ -350,6 +395,32 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
   },
+  quickActionsContainer: {
+    marginBottom: 20,
+  },
+  quickActionsGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  quickActionButton: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  quickActionText: {
+    fontSize: 12,
+    color: "#374151",
+    marginTop: 8,
+    textAlign: "center",
+    fontWeight: "500",
+  },
   tasksSection: {
     marginBottom: 20,
   },
@@ -370,12 +441,19 @@ const styles = StyleSheet.create({
   taskItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#FFFFFF",
+    marginBottom: 8,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   taskCheckbox: {
-    marginRight: 10,
+    marginRight: 12,
   },
   taskContent: {
     flex: 1,
@@ -383,7 +461,32 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 16,
     color: "#111827",
-    fontWeight: "bold",
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  taskMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  taskCategory: {
+    fontSize: 12,
+    color: "#6B7280",
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  priorityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  priorityText: {
+    fontSize: 10,
+    color: "#FFFFFF",
+    fontWeight: "600",
+    textTransform: "uppercase",
   },
   completedTask: {
     opacity: 0.7,
@@ -391,26 +494,44 @@ const styles = StyleSheet.create({
   completedTaskText: {
     textDecorationLine: "line-through",
   },
-  taskCategory: {
-    fontSize: 12,
+  emptyState: {
+    backgroundColor: "#FFFFFF",
+    padding: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  emptyText: {
+    fontSize: 16,
     color: "#6B7280",
-    marginTop: 2,
+    marginTop: 12,
+    fontWeight: "500",
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: "#9CA3AF",
+    marginTop: 4,
+    textAlign: "center",
   },
   floatingButton: {
     position: "absolute",
     bottom: 20,
     right: 20,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#4F46E5",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#8B593E",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   modalOverlay: {
     flex: 1,
@@ -424,13 +545,12 @@ const styles = StyleSheet.create({
     padding: 25,
     width: "90%",
     maxWidth: 400,
-    alignItems: "center",
+    maxHeight: "80%",
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    width: "100%",
     marginBottom: 20,
   },
   modalTitle: {
@@ -449,8 +569,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#111827",
   },
+  textArea: {
+    height: 80,
+    textAlignVertical: "top",
+    paddingTop: 15,
+  },
+  prioritySection: {
+    marginBottom: 20,
+  },
+  priorityLabel: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: 10,
+  },
+  priorityButtons: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  priorityButton: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  priorityButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  selectedPriorityButtonText: {
+    color: "#FFFFFF",
+  },
   categorySection: {
-    width: "100%",
     marginBottom: 20,
   },
   categoryLabel: {
@@ -471,14 +624,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   selectedCategoryChip: {
-    backgroundColor: "#4F46E5",
-    borderColor: "#4F46E5",
+    backgroundColor: "#8B593E",
+    borderColor: "#8B593E",
     borderWidth: 1,
   },
   categoryChipText: {
     fontSize: 13,
     fontWeight: "bold",
-    color: "#4F46E5",
+    color: "#8B593E",
   },
   selectedCategoryChipText: {
     color: "#FFFFFF",
@@ -501,10 +654,13 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   addButton: {
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#8B593E",
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 10,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   addButtonText: {
     color: "#FFFFFF",

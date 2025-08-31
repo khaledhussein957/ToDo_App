@@ -9,6 +9,13 @@ export interface Task {
   completed: boolean;
   dueDate?: string;
   category?: string;
+  categoryId?: string | {
+    _id: string;
+    name: string;
+    userId: string;
+    createdAt: string;
+    updatedAt: string;
+  };
   priority?: "low" | "medium" | "high";
   tags?: string[];
   recurrence?: "Daily" | "Weekly" | "Monthly" | null;
