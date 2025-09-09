@@ -6,8 +6,10 @@ import type { AuthenticatedRequest } from "../middleware/protectRoute.middleware
 import Task from "../model/task.model.ts";
 import Category from "../model/category.model.ts";
 import User from "../model/user.model.ts";
+import Notification from "../model/notification.model.ts";
 
 import cloudinary from "../config/cloudinary.ts";
+import Analytics from "../model/analytics.model.ts";
 
 export const createTask = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -270,6 +272,30 @@ export const completeTask = async (
       { new: true }
     );
 
+    // update the pending notification
+    const pendingNotification = await Notification.findOneAndUpdate(
+      { taskId: id, sent: false },
+      { sent: true },
+      { new: true }
+    );
+    if (pendingNotification) {
+      await Notification.findByIdAndDelete(pendingNotification._id);
+    }
+
+    // update the analytics
+    const analytics = await Analytics.findOneAndUpdate(
+      { userId: user.userId },
+      { $inc: { completedTasks: 1, totalTasks: 1 } },
+      { new: true }
+    );
+    if (!analytics) {
+      await Analytics.create({
+        userId: user.userId,
+        totalTasks: 1,
+        completedTasks: 1,
+      });
+    }
+
     res
       .status(200)
       .json({
@@ -323,7 +349,25 @@ export const deleteTask = async (req: AuthenticatedRequest, res: Response) => {
         // Continue with local deletion even if Cloudinary deletion fails
       }
     }
+        
+    // remove the pending notification
+    const pendingNotification = await Notification.findOneAndDelete(
+      { taskId: id, sent: false }
+    );
 
+    // update the analytics
+    const analytics = await Analytics.findOneAndUpdate(
+      { userId: user.userId },
+      { $inc: { totalTasks: -1, completedTasks: -1 } },
+      { new: true }
+    );
+    if (!analytics) {
+      await Analytics.create({
+        userId: user.userId,
+        totalTasks: 0,
+        completedTasks: 0,
+      });
+    }
 
     const deletedTask = await Task.findByIdAndDelete(id);
     if (!deletedTask) {

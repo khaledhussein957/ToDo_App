@@ -7,7 +7,6 @@ export interface IAnalytics extends Document {
     pendingTasks: number;
     totalCategories: number;
     totalNotifications: number;
-    totalSharedTasks: number;
     createdAt: Date;
 }
 
@@ -18,7 +17,6 @@ const AnalyticsSchema = new mongoose.Schema<IAnalytics>({
     pendingTasks: { type: Number, default: 0 },
     totalCategories: { type: Number, default: 0 },
     totalNotifications: { type: Number, default: 0 },
-    totalSharedTasks: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
 });
 
